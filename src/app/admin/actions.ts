@@ -1,0 +1,186 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+import { PRODUCT_IMAGE_BUCKET } from "@/lib/images";
+import { slugify } from "@/lib/slug";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
+import type { Json } from "@/lib/supabase/types";
+
+export type ActionState = { error: string | null };
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+export async function signIn(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const email = String(formData.get("email") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const redirectTo = String(formData.get("redirect") ?? "/admin");
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return { error: "登入失敗，請確認帳號密碼。" };
+
+  redirect(redirectTo.startsWith("/admin") ? redirectTo : "/admin");
+}
+
+export async function signOut() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/admin/login");
+}
+
+// ---------------------------------------------------------------------------
+// Product create / update / delete
+// ---------------------------------------------------------------------------
+
+function parseSpecs(raw: string): Json {
+  // Accepts "key: value" per line, or raw JSON.
+  const trimmed = raw.trim();
+  if (!trimmed) return {};
+  if (trimmed.startsWith("{")) {
+    try {
+      return JSON.parse(trimmed) as Json;
+    } catch {
+      return {};
+    }
+  }
+  const out: Record<string, string> = {};
+  for (const line of trimmed.split("\n")) {
+    const idx = line.indexOf(":");
+    if (idx === -1) continue;
+    const key = line.slice(0, idx).trim();
+    const value = line.slice(idx + 1).trim();
+    if (key) out[key] = value;
+  }
+  return out;
+}
+
+async function uploadImages(productId: string, files: File[]): Promise<string[]> {
+  const supabase = await createClient();
+  const paths: string[] = [];
+  for (const file of files) {
+    if (!file || file.size === 0) continue;
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+    const path = `${productId}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from(PRODUCT_IMAGE_BUCKET)
+      .upload(path, file, { contentType: file.type, upsert: false });
+    if (!error) paths.push(path);
+  }
+  return paths;
+}
+
+function readProductFields(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  const slug =
+    slugify(String(formData.get("slug") ?? "")) || slugify(name) || crypto.randomUUID();
+  const priceRaw = String(formData.get("price") ?? "").trim();
+
+  return {
+    name,
+    slug,
+    description: String(formData.get("description") ?? "").trim() || null,
+    category_id: String(formData.get("category_id") ?? "") || null,
+    model_number: String(formData.get("model_number") ?? "").trim() || null,
+    sku: String(formData.get("sku") ?? "").trim() || null,
+    price: priceRaw ? Number(priceRaw) : null,
+    specs: parseSpecs(String(formData.get("specs") ?? "")),
+    is_published: formData.get("is_published") === "on",
+    is_new: formData.get("is_new") === "on",
+    sort_order: Number(String(formData.get("sort_order") ?? "0")) || 0,
+  };
+}
+
+export async function createProduct(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const fields = readProductFields(formData);
+  if (!fields.name) return { error: "請輸入商品名稱。" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .insert({ ...fields, images: [] })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    return { error: error?.message ?? "新增失敗。" };
+  }
+
+  const files = formData.getAll("images").filter((f): f is File => f instanceof File);
+  const images = await uploadImages(data.id, files);
+  if (images.length > 0) {
+    await supabase.from("products").update({ images }).eq("id", data.id);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+  redirect("/admin");
+}
+
+export async function updateProduct(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { error: "缺少商品 ID。" };
+  const fields = readProductFields(formData);
+  if (!fields.name) return { error: "請輸入商品名稱。" };
+
+  const supabase = await createClient();
+
+  // Existing images the user kept (hidden inputs) + any newly uploaded files.
+  const keptImages = formData
+    .getAll("existing_images")
+    .map((v) => String(v))
+    .filter(Boolean);
+  const files = formData.getAll("images").filter((f): f is File => f instanceof File);
+  const newImages = await uploadImages(id, files);
+
+  const { error } = await supabase
+    .from("products")
+    .update({ ...fields, images: [...keptImages, ...newImages] })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath(`/products/${fields.slug}`);
+  redirect("/admin");
+}
+
+export async function deleteProduct(formData: FormData): Promise<void> {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("products")
+    .select("images")
+    .eq("id", id)
+    .maybeSingle();
+
+  await supabase.from("products").delete().eq("id", id);
+
+  // Best-effort storage cleanup with the service role (bypasses RLS).
+  if (data?.images?.length) {
+    try {
+      const admin = createAdminClient();
+      await admin.storage.from(PRODUCT_IMAGE_BUCKET).remove(data.images);
+    } catch {
+      // Storage cleanup is non-critical; ignore if service key is unset.
+    }
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+}

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600" role="img" aria-label="面盆示意圖">
+  <rect width="600" height="600" fill="#f3f4f6"/>
+  <rect width="600" height="600" fill="url(#g)"/>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#e5e7eb" stop-opacity="0.4"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="#9ca3af" stroke-width="10" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M170 250h260a0 0 0 0 1 0 0l-26 110a60 60 0 0 1-58 46h-92a60 60 0 0 1-58-46z"/>
+    <line x1="150" y1="250" x2="450" y2="250"/>
+    <ellipse cx="300" cy="320" rx="74" ry="20"/>
+  </g>
+  <text x="300" y="540" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" letter-spacing="6" fill="#0b3d91" opacity="0.7">TOTO</text>
+</svg>
