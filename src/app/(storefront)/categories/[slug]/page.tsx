@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ProductGrid } from "@/components/product-grid";
@@ -35,11 +36,23 @@ export default async function CategoryPage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold">{category.name}</h1>
+      <nav className="mb-6 text-sm text-muted">
+        <Link href="/" className="transition-colors hover:text-accent">
+          首頁
+        </Link>
+        <span className="mx-2 text-border">/</span>
+        <span className="text-foreground">{category.name}</span>
+      </nav>
+      <header className="mb-9 border-b border-border pb-7">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          {category.name}
+        </h1>
         {category.description && (
-          <p className="mt-2 text-sm text-muted">{category.description}</p>
+          <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted">
+            {category.description}
+          </p>
         )}
+        <p className="mt-4 text-sm text-muted">共 {products.length} 件商品</p>
       </header>
       <ProductGrid products={products} empty="此分類目前沒有商品。" />
     </div>

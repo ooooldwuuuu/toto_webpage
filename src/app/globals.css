@@ -1,25 +1,69 @@
 @import "tailwindcss";
 
+/*
+ * TOTO storefront design tokens.
+ * The brand defines a fixed light identity, so the page is locked to light
+ * mode (no dark variant) — this is an intentional, brand-driven deviation.
+ *
+ * 企業藍   #0054A6  primary brand / CTAs / emphasis      → --accent
+ * 石墨深灰 #2A323D  body + heading text (softer than #000) → --foreground
+ * 藍灰     #E1E8F0  tags, borders, secondary buttons      → --component / --border
+ * 陶瓷暖白 #F8F9FA  page background                       → --background
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #1a1a1a;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --accent: #0b3d91; /* TOTO-style deep blue */
+  --background: #f8f9fa; /* 陶瓷暖白 */
+  --surface: #ffffff; /* elevated cards above the warm-white page */
+  --surface-muted: #eef2f7; /* image wells / inset fills */
+  --foreground: #2a323d; /* 石墨深灰 */
+  --muted: #5c6675; /* secondary text, derived slate (passes AA) */
+  --component: #e1e8f0; /* 清水混凝土藍灰 */
+  --border: #e1e8f0;
+  --accent: #0054a6; /* TOTO 企業藍 */
+  --accent-hover: #00417e;
+  --accent-soft: #eaf1fa; /* tinted accent wash for subtle highlights */
+  color-scheme: light;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
+  --color-component: var(--component);
   --color-border: var(--border);
   --color-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --font-sans: var(--font-geist-sans), var(--font-noto-tc);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-geist-sans), var(--font-noto-tc), "PingFang TC",
+    "Microsoft JhengHei", "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * MOTION_INTENSITY: 4 — restrained CSS-only entrance + hover transitions.
+ * Base state is fully visible; the animation only adds a rise, so disabling
+ * it under reduced-motion leaves content correct.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .animate-rise {
+    animation: rise 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
 }
