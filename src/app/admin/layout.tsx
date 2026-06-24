@@ -65,6 +65,12 @@ export default async function AdminLayout({
               商品列表
             </Link>
             <Link
+              href="/admin/categories"
+              className="text-sm text-muted hover:text-foreground"
+            >
+              分類管理
+            </Link>
+            <Link
               href="/admin/products/new"
               className="text-sm text-muted hover:text-foreground"
             >

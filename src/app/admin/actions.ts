@@ -194,3 +194,92 @@ export async function deleteProduct(formData: FormData): Promise<void> {
   revalidatePath("/admin");
   revalidatePath("/");
 }
+
+// ---------------------------------------------------------------------------
+// Category create / update / delete
+// ---------------------------------------------------------------------------
+
+// The storefront treats this slug as a virtual "all new products" view, so the
+// row must keep existing — guard it from deletion.
+const VIRTUAL_CATEGORY_SLUG = "new-arrivals";
+
+function readCategoryFields(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  const slug =
+    slugify(String(formData.get("slug") ?? "")) ||
+    slugify(name) ||
+    crypto.randomUUID();
+  return {
+    name,
+    slug,
+    description: String(formData.get("description") ?? "").trim() || null,
+    sort_order: Number(String(formData.get("sort_order") ?? "0")) || 0,
+  };
+}
+
+function categoryError(message: string): string {
+  if (/duplicate|unique/i.test(message)) return "網址代稱已存在，請換一個。";
+  return message || "操作失敗。";
+}
+
+export async function createCategory(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  if (ADMIN_AUTH_DISABLED) return PREVIEW_READONLY;
+  const fields = readCategoryFields(formData);
+  if (!fields.name) return { error: "請輸入分類名稱。" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("categories").insert(fields);
+  if (error) return { error: categoryError(error.message) };
+
+  revalidatePath("/admin/categories");
+  revalidatePath("/");
+  redirect("/admin/categories");
+}
+
+export async function updateCategory(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  if (ADMIN_AUTH_DISABLED) return PREVIEW_READONLY;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { error: "缺少分類 ID。" };
+  const fields = readCategoryFields(formData);
+  if (!fields.name) return { error: "請輸入分類名稱。" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("categories")
+    .update(fields)
+    .eq("id", id);
+  if (error) return { error: categoryError(error.message) };
+
+  revalidatePath("/admin/categories");
+  revalidatePath("/");
+  revalidatePath(`/categories/${fields.slug}`);
+  redirect("/admin/categories");
+}
+
+export async function deleteCategory(formData: FormData): Promise<void> {
+  if (ADMIN_AUTH_DISABLED) return;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const supabase = await createClient();
+  // Never delete the virtual "new-arrivals" category the storefront depends on.
+  const { data: category } = await supabase
+    .from("categories")
+    .select("slug")
+    .eq("id", id)
+    .maybeSingle();
+  if (category?.slug === VIRTUAL_CATEGORY_SLUG) return;
+
+  // Products reference categories with `on delete set null`, so any products in
+  // this category simply become uncategorised.
+  await supabase.from("categories").delete().eq("id", id);
+
+  revalidatePath("/admin/categories");
+  revalidatePath("/");
+}
