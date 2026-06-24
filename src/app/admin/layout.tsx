@@ -12,8 +12,10 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Back office needs a real database; it stays disabled until Supabase is set.
-  if (!isSupabaseConfigured) {
+  // Without a database the back office normally stays disabled. In preview
+  // mode (ADMIN_AUTH_DISABLED) we instead render it on mock data so the UI can
+  // be viewed before Supabase is wired up — matching the storefront.
+  if (!isSupabaseConfigured && !ADMIN_AUTH_DISABLED) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
         <div className="max-w-md rounded-xl border border-border bg-white p-8 text-center shadow-sm">
@@ -33,17 +35,22 @@ export default async function AdminLayout({
     );
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Resolve the session only when Supabase is configured; preview mode may run
+  // on mock data with no database at all.
+  let userEmail: string | null = null;
+  if (isSupabaseConfigured) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  // Normally only /admin/login reaches here unauthenticated (the proxy
-  // redirects every other /admin path), so render it bare with no chrome.
-  // While ADMIN_AUTH_DISABLED we instead render the chrome without a session
-  // so the back office can be previewed.
-  if (!user && !ADMIN_AUTH_DISABLED) {
-    return <>{children}</>;
+    // Normally only /admin/login reaches here unauthenticated (the proxy
+    // redirects every other /admin path), so render it bare with no chrome.
+    // While ADMIN_AUTH_DISABLED we instead render the chrome without a session.
+    if (!user && !ADMIN_AUTH_DISABLED) {
+      return <>{children}</>;
+    }
+    userEmail = user?.email ?? null;
   }
 
   return (
@@ -72,10 +79,10 @@ export default async function AdminLayout({
             </Link>
           </div>
           <div className="flex items-center gap-3">
-            {user ? (
+            {userEmail ? (
               <>
                 <span className="hidden text-sm text-muted sm:inline">
-                  {user.email}
+                  {userEmail}
                 </span>
                 <form action={signOut}>
                   <button

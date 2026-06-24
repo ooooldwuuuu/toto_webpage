@@ -2,22 +2,29 @@ import Link from "next/link";
 
 import { deleteProduct } from "@/app/admin/actions";
 import { formatPrice, productImageUrl } from "@/lib/images";
+import { mockCategories, mockProducts } from "@/lib/mock-data";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import type { ProductWithCategory } from "@/lib/supabase/types";
 
 export default async function AdminProductsPage() {
-  // Layout already shows the "not configured" notice; bail before touching DB.
-  if (!isSupabaseConfigured) return null;
+  let products: ProductWithCategory[];
 
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("products")
-    .select("*, categories(name)")
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: false });
-
-  const products = (data ?? []) as ProductWithCategory[];
+  if (!isSupabaseConfigured) {
+    // Mock-data preview (no database) — mirror the storefront fallback.
+    products = mockProducts.map((p) => ({
+      ...p,
+      categories: mockCategories.find((c) => c.id === p.category_id) ?? null,
+    }));
+  } else {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("products")
+      .select("*, categories(name)")
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false });
+    products = (data ?? []) as ProductWithCategory[];
+  }
 
   return (
     <div>

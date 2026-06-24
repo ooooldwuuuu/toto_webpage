@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { updateProduct } from "@/app/admin/actions";
 import { ProductForm } from "@/app/admin/products/product-form";
+import { mockProducts } from "@/lib/mock-data";
 import { getCategories } from "@/lib/queries";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
@@ -14,14 +15,22 @@ export default async function EditProductPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  if (!isSupabaseConfigured) return null;
-
   const { id } = await params;
-  const supabase = await createClient();
-  const [{ data: product }, categories] = await Promise.all([
-    supabase.from("products").select("*").eq("id", id).maybeSingle(),
-    getCategories(),
-  ]);
+  const categories = await getCategories();
+
+  let product: Product | null;
+  if (!isSupabaseConfigured) {
+    // Mock-data preview (no database).
+    product = mockProducts.find((p) => p.id === id) ?? null;
+  } else {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    product = (data as Product) ?? null;
+  }
 
   if (!product) notFound();
 
@@ -31,7 +40,7 @@ export default async function EditProductPage({
       <ProductForm
         action={updateProduct}
         categories={categories}
-        product={product as Product}
+        product={product}
       />
     </div>
   );
