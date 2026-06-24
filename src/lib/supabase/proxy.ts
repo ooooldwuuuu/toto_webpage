@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { createServerClient } from "@supabase/ssr";
 
+import { ADMIN_AUTH_DISABLED } from "@/lib/admin-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { Database } from "@/lib/supabase/types";
 
@@ -51,7 +52,8 @@ export async function updateSession(request: NextRequest) {
   const isLogin = pathname === "/admin/login";
 
   // Unauthenticated visitor to a protected admin page → send to login.
-  if (isAdmin && !isLogin && !user) {
+  // Skipped while ADMIN_AUTH_DISABLED so the back office is viewable without login.
+  if (isAdmin && !isLogin && !user && !ADMIN_AUTH_DISABLED) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
     url.searchParams.set("redirect", pathname);
@@ -60,8 +62,8 @@ export async function updateSession(request: NextRequest) {
     return redirect;
   }
 
-  // Already authenticated but sitting on the login page → go to dashboard.
-  if (isLogin && user) {
+  // Already authenticated (or auth bypassed) but on the login page → dashboard.
+  if (isLogin && (user || ADMIN_AUTH_DISABLED)) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin";
     const redirect = NextResponse.redirect(url);

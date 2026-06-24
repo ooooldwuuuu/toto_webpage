@@ -3,12 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { ADMIN_AUTH_DISABLED } from "@/lib/admin-auth";
 import { PRODUCT_IMAGE_BUCKET } from "@/lib/images";
 import { slugify } from "@/lib/slug";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/types";
 
 export type ActionState = { error: string | null };
+
+// While auth is bypassed for previewing the UI, refuse all writes so the open
+// back office cannot mutate the database or storage.
+const PREVIEW_READONLY: ActionState = {
+  error: "預覽模式：已停用寫入操作（尚未啟用登入）。",
+};
 
 // ---------------------------------------------------------------------------
 // Auth
@@ -101,6 +108,7 @@ export async function createProduct(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  if (ADMIN_AUTH_DISABLED) return PREVIEW_READONLY;
   const fields = readProductFields(formData);
   if (!fields.name) return { error: "請輸入商品名稱。" };
 
@@ -130,6 +138,7 @@ export async function updateProduct(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  if (ADMIN_AUTH_DISABLED) return PREVIEW_READONLY;
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "缺少商品 ID。" };
   const fields = readProductFields(formData);
@@ -159,6 +168,7 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(formData: FormData): Promise<void> {
+  if (ADMIN_AUTH_DISABLED) return;
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 

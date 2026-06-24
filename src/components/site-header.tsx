@@ -25,12 +25,6 @@ export async function SiteHeader() {
             </Link>
           ))}
         </nav>
-        <Link
-          href="/admin"
-          className="ml-auto rounded-full border border-border px-3.5 py-1.5 text-xs font-medium text-muted transition-colors hover:border-accent hover:text-accent md:ml-0"
-        >
-          後台管理
-        </Link>
       </div>
     </header>
   );
