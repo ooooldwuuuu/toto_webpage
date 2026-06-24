@@ -1,17 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MapPin, Phone, Storefront } from "@phosphor-icons/react/dist/ssr";
+import { Storefront, Tag } from "@phosphor-icons/react/dist/ssr";
+
+import { StoreInfo } from "@/app/links/store-info";
 
 export const metadata: Metadata = {
-  title: "聯絡與連結",
-  description: "TOTO 衛浴的 LINE、電話、Facebook 與線上型錄等聯絡方式。",
+  title: { absolute: "泉昌水電材料 & 金品衛浴" },
+  description:
+    "泉昌水電材料行與 TOTO 金品衛浴設備的 LINE、門市資訊、電話與線上型錄。",
 };
 
 /**
- * Linktree-style link hub. Standalone page (outside the storefront route
- * group) so it carries no shop header/footer. Cover banner + overlapping
- * avatar + a 2-column grid of link buttons that collapses to one column on
- * mobile. All links/images below are PLACEHOLDERS — replace with real assets.
+ * Linktree-style link hub for 泉昌水電材料 & 金品衛浴. Standalone page (outside the
+ * storefront route group) so it carries no shop header/footer. Cover banner +
+ * overlapping avatar + a 2-column grid of links; item 3 opens a store-info
+ * pop-up card (see store-info.tsx).
+ * TODO: replace the cover photo and avatar placeholders with real assets.
  */
 
 type LinkItem = {
@@ -20,49 +24,51 @@ type LinkItem = {
   href: string;
 } & (
   | { kind: "brand"; slug: string; color: string } // brand mark via Simple Icons
-  | { kind: "action"; Icon: typeof Phone } // UI action via Phosphor
+  | { kind: "action"; Icon: typeof Storefront } // UI action via Phosphor
 );
 
-// TODO: replace hrefs with the real LINE / 電話 / Facebook / 地址 destinations.
-const links: LinkItem[] = [
-  {
-    kind: "brand",
-    label: "LINE 諮詢",
-    sub: "加入官方帳號",
-    href: "https://line.me/",
-    slug: "line",
-    color: "#06C755",
-  },
-  {
-    kind: "action",
-    label: "電話聯繫",
-    sub: "撥打門市電話",
-    href: "tel:+886200000000",
-    Icon: Phone,
-  },
-  {
-    kind: "brand",
-    label: "Facebook",
-    sub: "粉絲專頁",
-    href: "https://www.facebook.com/",
-    slug: "facebook",
-    color: "#1877F2",
-  },
-  {
-    kind: "action",
-    label: "瀏覽商品",
-    sub: "線上型錄",
-    href: "/",
-    Icon: Storefront,
-  },
-  {
-    kind: "action",
-    label: "門市資訊",
-    sub: "地址與營業時間",
-    href: "#",
-    Icon: MapPin,
-  },
-];
+const lineQuanchang: LinkItem = {
+  kind: "brand",
+  label: "泉昌水電材料のLINE",
+  sub: "加入好友",
+  href: "https://line.me/ti/p/6wAaLeDSf1",
+  slug: "line",
+  color: "#06C755",
+};
+
+const lineJinpin: LinkItem = {
+  kind: "brand",
+  label: "金品衛浴のLINE",
+  sub: "加入好友",
+  href: "https://line.me/ti/p/uApXbM5sUt",
+  slug: "line",
+  color: "#06C755",
+};
+
+const facebookJinpin: LinkItem = {
+  kind: "brand",
+  label: "金品衛浴のFB",
+  sub: "粉絲專頁",
+  href: "https://www.facebook.com/profile.php?id=100078508832016",
+  slug: "facebook",
+  color: "#1877F2",
+};
+
+const browseProducts: LinkItem = {
+  kind: "action",
+  label: "瀏覽各式商品",
+  sub: "線上型錄",
+  href: "/",
+  Icon: Storefront,
+};
+
+const totoSale: LinkItem = {
+  kind: "action",
+  label: "TOTO 特價專區",
+  sub: "優惠商品",
+  href: "/",
+  Icon: Tag,
+};
 
 function isInternal(href: string) {
   return href.startsWith("/") && !href.startsWith("//");
@@ -111,13 +117,13 @@ function LinkButton({ item, index }: { item: LinkItem; index: number }) {
     );
   }
 
-  const external = item.href.startsWith("http");
   return (
     <a
       href={item.href}
       className={className}
       style={style}
-      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      target="_blank"
+      rel="noopener noreferrer"
     >
       {inner}
     </a>
@@ -137,18 +143,18 @@ export default function LinksPage() {
       </div>
 
       <div className="mx-auto w-full max-w-2xl flex-1 px-4">
-        <header className="flex flex-col items-center text-center animate-rise">
+        <header className="flex animate-rise flex-col items-center text-center">
           {/* TODO: replace the placeholder mark with the real 大頭照 avatar. */}
           <div className="-mt-14 flex h-28 w-28 items-center justify-center rounded-full border-4 border-background bg-surface shadow-md">
-            <span className="text-2xl font-bold tracking-tight text-accent">
-              TOTO
+            <span className="text-xl font-bold tracking-tight text-accent">
+              金品
             </span>
           </div>
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
-            TOTO 衛浴
+          <h1 className="mt-4 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            泉昌水電材料 &amp; 金品衛浴
           </h1>
           <p className="mt-1.5 text-sm text-muted">
-            精選日本衛浴 · 門市諮詢與安裝
+            屏東潮州 · TOTO 衛浴設備與水電材料
           </p>
         </header>
 
@@ -160,15 +166,18 @@ export default function LinksPage() {
             style={{ backgroundImage: "url(/placeholders/toilet.svg)" }}
           />
           <div className="relative grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {links.map((item, index) => (
-              <LinkButton key={item.label} item={item} index={index} />
-            ))}
+            <LinkButton item={lineQuanchang} index={0} />
+            <LinkButton item={lineJinpin} index={1} />
+            <StoreInfo index={2} />
+            <LinkButton item={facebookJinpin} index={3} />
+            <LinkButton item={browseProducts} index={4} />
+            <LinkButton item={totoSale} index={5} />
           </div>
         </section>
       </div>
 
       <footer className="pb-10 text-center text-xs text-muted">
-        © {new Date().getFullYear()} TOTO 衛浴
+        © {new Date().getFullYear()} 泉昌水電材料 & 金品衛浴
       </footer>
     </>
   );
